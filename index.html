@@ -14,7 +14,6 @@
       --border: #E5E7EB;
     }
 
-    /* Temas de color */
     body.theme-blue { --primary: #3B82F6; }
     body.theme-green { --primary: #10B981; }
     body.theme-purple { --primary: #8B5CF6; }
@@ -35,7 +34,6 @@
     .nav-btn { flex: 1; padding: 16px; text-align: center; border: none; background: none; font-size: 1rem; font-weight: 600; color: var(--muted); cursor: pointer; }
     .nav-btn.active { color: var(--primary); border-bottom: 3px solid var(--primary); }
 
-    /* Paleta de colores en la barra */
     .color-picker { display: flex; gap: 6px; padding-right: 12px; }
     .color-dot { width: 18px; height: 18px; border-radius: 50%; cursor: pointer; border: 2px solid var(--card); }
     .dot-blue { background: #3B82F6; }
@@ -47,6 +45,11 @@
     .container { max-width: 500px; margin: 0 auto; padding: 16px; }
 
     /* AGENDA VIEW */
+    .cat-bar { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 10px; margin-bottom: 12px; align-items: center; }
+    .cat-btn { padding: 8px 14px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; border: 1px solid var(--border); background: var(--card); color: var(--text); cursor: pointer; white-space: nowrap; }
+    .cat-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+    .btn-add-cat { padding: 6px 12px; border-radius: 20px; font-size: 0.9rem; font-weight: bold; border: 1px dashed var(--muted); background: transparent; color: var(--muted); cursor: pointer; }
+
     .week-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
     .week-nav button { border: none; background: none; font-size: 1.2rem; cursor: pointer; padding: 4px 12px; color: var(--primary); }
     .week-days { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 16px; }
@@ -65,10 +68,11 @@
     .task-list { list-style: none; }
     .task-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border); }
     .task-item:last-child { border-bottom: none; }
-    .task-left { display: flex; align-items: center; gap: 12px; flex: 1; }
+    .task-left { display: flex; align-items: center; gap: 10px; flex: 1; }
     .task-checkbox { width: 20px; height: 20px; accent-color: var(--primary); cursor: pointer; }
-    .task-text { font-size: 1rem; word-break: break-word; }
+    .task-text { font-size: 0.95rem; word-break: break-word; }
     .task-text.done { text-decoration: line-through; color: var(--muted); }
+    .task-tag { font-size: 0.7rem; padding: 2px 6px; border-radius: 6px; background: var(--bg); border: 1px solid var(--border); color: var(--muted); font-weight: 600; }
     .btn-del { border: none; background: none; color: #EF4444; font-size: 1.1rem; cursor: pointer; padding: 4px 8px; }
 
     /* BLOC VIEW */
@@ -88,7 +92,6 @@
     <button class="nav-btn active" id="btn-agenda" onclick="switchTab('agenda')">Agenda</button>
     <button class="nav-btn" id="btn-bloc" onclick="switchTab('bloc')">Hojas en Blanco</button>
     
-    <!-- Selector de Colores -->
     <div class="color-picker">
       <div class="color-dot dot-blue" onclick="setTheme('theme-blue')"></div>
       <div class="color-dot dot-green" onclick="setTheme('theme-green')"></div>
@@ -101,6 +104,10 @@
   <div class="container">
     <!-- VISTA AGENDA -->
     <div id="view-agenda">
+      
+      <!-- Barra de Categorías / Vistas de Agenda -->
+      <div class="cat-bar" id="category-bar"></div>
+
       <div class="week-nav">
         <button onclick="changeWeek(-1)">&larr;</button>
         <span id="current-month-year" style="font-weight: bold;"></span>
@@ -111,6 +118,7 @@
 
       <div class="card">
         <div class="card-title" id="selected-day-label">Hoy</div>
+
         <div class="add-box">
           <input type="text" id="new-task-input" placeholder="Añadir una tarea..." onkeypress="handleKey(event)">
           <button onclick="addAgendaTask()">+</button>
@@ -129,13 +137,17 @@
   <script>
     let currentDate = new Date();
     let selectedDate = new Date();
+    let selectedCategory = 'General';
+
+    let categories = JSON.parse(localStorage.getItem('agenda_categories_db')) || [
+      'General', '🏠 Casa', '🩺 Médicos', '🏫 Escuela'
+    ];
     let agendaData = JSON.parse(localStorage.getItem('agenda_tasks_db')) || {};
     let notesData = JSON.parse(localStorage.getItem('agenda_notes_db')) || [
       { id: 1, title: 'Disfraz para Isabella', body: '- comprar tela\n- coser\n- ir al evento' },
       { id: 2, title: 'Ejercicio', body: '- salir a correr el viernes\n- lavar zapatillas' }
     ];
 
-    // Cargar Tema
     const savedTheme = localStorage.getItem('agenda_theme') || 'theme-blue';
     setTheme(savedTheme);
 
@@ -157,6 +169,40 @@
         document.getElementById('btn-bloc').classList.add('active');
         document.getElementById('view-bloc').classList.remove('hidden');
         renderNotes();
+      }
+    }
+
+    function renderCategoryBar() {
+      const bar = document.getElementById('category-bar');
+      bar.innerHTML = '';
+
+      categories.forEach(cat => {
+        const btn = document.createElement('button');
+        btn.className = 'cat-btn' + (cat === selectedCategory ? ' active' : '');
+        btn.innerText = cat;
+        btn.onclick = () => { selectedCategory = cat; renderCategoryBar(); renderTasks(); };
+        bar.appendChild(btn);
+      });
+
+      // Botón para agregar nueva categoría
+      const addBtn = document.createElement('button');
+      addBtn.className = 'btn-add-cat';
+      addBtn.innerText = '+ Nueva';
+      addBtn.onclick = createNewCategory;
+      bar.appendChild(addBtn);
+    }
+
+    function createNewCategory() {
+      const name = prompt('Nombre de la nueva categoría (ej: 🚗 auto, 🛒 compras):');
+      if (name && name.trim()) {
+        const cleanName = name.trim();
+        if (!categories.includes(cleanName)) {
+          categories.push(cleanName);
+          localStorage.setItem('agenda_categories_db', JSON.stringify(categories));
+          selectedCategory = cleanName;
+          renderCategoryBar();
+          renderTasks();
+        }
       }
     }
 
@@ -208,17 +254,32 @@
       const dayOptions = { weekday: 'long', day: 'numeric', month: 'long' };
       document.getElementById('selected-day-label').innerText = selectedDate.toLocaleDateString('es-ES', dayOptions);
 
-      const tasks = agendaData[key] || [];
+      const allTasks = agendaData[key] || [];
 
-      tasks.forEach((task, index) => {
+      // Filtrar tareas según la categoría activa
+      const tasksToDisplay = allTasks.filter(t => {
+        if (selectedCategory === 'General') return true;
+        return (t.cat || '🏠 Casa') === selectedCategory;
+      });
+
+      // Actualizar el placeholder del input
+      const input = document.getElementById('new-task-input');
+      input.placeholder = selectedCategory === 'General' 
+        ? "Añadir tarea (se guardará en 🏠 Casa)..." 
+        : `Añadir tarea en ${selectedCategory}...`;
+
+      tasksToDisplay.forEach((task) => {
+        const originalIndex = allTasks.indexOf(task);
+
         const li = document.createElement('li');
         li.className = 'task-item';
         li.innerHTML = `
           <div class="task-left">
-            <input type="checkbox" class="task-checkbox" ${task.done ? 'checked' : ''} onchange="toggleTask(${index})">
+            <input type="checkbox" class="task-checkbox" ${task.done ? 'checked' : ''} onchange="toggleTask(${originalIndex})">
             <span class="task-text ${task.done ? 'done' : ''}">${task.text}</span>
+            ${selectedCategory === 'General' ? `<span class="task-tag">${task.cat || '🏠 Casa'}</span>` : ''}
           </div>
-          <button class="btn-del" onclick="deleteTask(${index})">&times;</button>
+          <button class="btn-del" onclick="deleteTask(${originalIndex})">&times;</button>
         `;
         list.appendChild(li);
       });
@@ -232,7 +293,10 @@
       const key = formatDateKey(selectedDate);
       if (!agendaData[key]) agendaData[key] = [];
 
-      agendaData[key].push({ text, done: false });
+      // Si se añade desde General, por defecto va a Casa; sino va a la categoría activa
+      const categoryToAssign = selectedCategory === 'General' ? '🏠 Casa' : selectedCategory;
+
+      agendaData[key].push({ text, cat: categoryToAssign, done: false });
       localStorage.setItem('agenda_tasks_db', JSON.stringify(agendaData));
       input.value = '';
       renderTasks();
@@ -294,6 +358,7 @@
     }
 
     // Inicializar
+    renderCategoryBar();
     renderWeek();
     renderTasks();
   </script>
