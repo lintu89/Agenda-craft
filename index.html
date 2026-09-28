@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Mi Agenda Mínima</title>
+  <style>
+    :root {
+      --bg: #F8F9FA;
+      --card: #FFFFFF;
+      --text: #212529;
+      --muted: #6C757D;
+      --primary: #3B82F6;
+      --border: #E5E7EB;
+    }
+
+    /* Temas de color */
+    body.theme-blue { --primary: #3B82F6; }
+    body.theme-green { --primary: #10B981; }
+    body.theme-purple { --primary: #8B5CF6; }
+    body.theme-warm { --primary: #D97706; }
+    body.theme-dark { 
+      --bg: #1F2937; 
+      --card: #111827; 
+      --text: #F9FAFB; 
+      --muted: #9CA3AF; 
+      --primary: #3B82F6; 
+      --border: #374151; 
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background-color: var(--bg); color: var(--text); padding-bottom: 70px; -webkit-tap-highlight-color: transparent; transition: background-color 0.2s, color 0.2s; }
+    
+    .top-nav { display: flex; background: var(--card); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 10; align-items: center; }
+    .nav-btn { flex: 1; padding: 16px; text-align: center; border: none; background: none; font-size: 1rem; font-weight: 600; color: var(--muted); cursor: pointer; }
+    .nav-btn.active { color: var(--primary); border-bottom: 3px solid var(--primary); }
+
+    /* Paleta de colores en la barra */
+    .color-picker { display: flex; gap: 6px; padding-right: 12px; }
+    .color-dot { width: 18px; height: 18px; border-radius: 50%; cursor: pointer; border: 2px solid var(--card); }
+    .dot-blue { background: #3B82F6; }
+    .dot-green { background: #10B981; }
+    .dot-purple { background: #8B5CF6; }
+    .dot-warm { background: #D97706; }
+    .dot-dark { background: #1F2937; border: 1px solid #9CA3AF; }
+
+    .container { max-width: 500px; margin: 0 auto; padding: 16px; }
+
+    /* AGENDA VIEW */
+    .week-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .week-nav button { border: none; background: none; font-size: 1.2rem; cursor: pointer; padding: 4px 12px; color: var(--primary); }
+    .week-days { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 16px; }
+    .day-pill { flex: 1; min-width: 50px; padding: 10px 4px; border-radius: 12px; background: var(--card); border: 1px solid var(--border); text-align: center; cursor: pointer; }
+    .day-pill.active { background: var(--primary); color: white; border-color: var(--primary); }
+    .day-name { font-size: 0.75rem; text-transform: uppercase; font-weight: bold; }
+    .day-num { font-size: 1.1rem; font-weight: bold; }
+
+    .card { background: var(--card); border-radius: 12px; padding: 16px; border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+    .card-title { font-size: 1.1rem; font-weight: bold; margin-bottom: 12px; color: var(--text); }
+
+    .add-box { display: flex; gap: 8px; margin-bottom: 16px; }
+    .add-box input { flex: 1; padding: 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.95rem; outline: none; background: var(--card); color: var(--text); }
+    .add-box button { padding: 12px 18px; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
+
+    .task-list { list-style: none; }
+    .task-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border); }
+    .task-item:last-child { border-bottom: none; }
+    .task-left { display: flex; align-items: center; gap: 12px; flex: 1; }
+    .task-checkbox { width: 20px; height: 20px; accent-color: var(--primary); cursor: pointer; }
+    .task-text { font-size: 1rem; word-break: break-word; }
+    .task-text.done { text-decoration: line-through; color: var(--muted); }
+    .btn-del { border: none; background: none; color: #EF4444; font-size: 1.1rem; cursor: pointer; padding: 4px 8px; }
+
+    /* BLOC VIEW */
+    .note-card { background: var(--card); border-radius: 12px; padding: 16px; border: 1px solid var(--border); margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+    .note-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .note-title { font-weight: bold; font-size: 1.1rem; border: none; outline: none; width: 100%; background: transparent; color: var(--text); }
+    .note-body { width: 100%; min-height: 100px; border: none; outline: none; resize: none; font-size: 0.95rem; color: var(--text); line-height: 1.5; background: transparent; }
+    
+    .btn-add-note { width: 100%; padding: 14px; background: var(--primary); color: white; border: none; border-radius: 12px; font-weight: bold; font-size: 1rem; cursor: pointer; margin-bottom: 16px; }
+
+    .hidden { display: none; }
+  </style>
+</head>
+<body id="app-body">
+
+  <nav class="top-nav">
+    <button class="nav-btn active" id="btn-agenda" onclick="switchTab('agenda')">Agenda</button>
+    <button class="nav-btn" id="btn-bloc" onclick="switchTab('bloc')">Hojas en Blanco</button>
+    
+    <!-- Selector de Colores -->
+    <div class="color-picker">
+      <div class="color-dot dot-blue" onclick="setTheme('theme-blue')"></div>
+      <div class="color-dot dot-green" onclick="setTheme('theme-green')"></div>
+      <div class="color-dot dot-purple" onclick="setTheme('theme-purple')"></div>
+      <div class="color-dot dot-warm" onclick="setTheme('theme-warm')"></div>
+      <div class="color-dot dot-dark" onclick="setTheme('theme-dark')"></div>
+    </div>
+  </nav>
+
+  <div class="container">
+    <!-- VISTA AGENDA -->
+    <div id="view-agenda">
+      <div class="week-nav">
+        <button onclick="changeWeek(-1)">&larr;</button>
+        <span id="current-month-year" style="font-weight: bold;"></span>
+        <button onclick="changeWeek(1)">&rarr;</button>
+      </div>
+
+      <div class="week-days" id="week-days-container"></div>
+
+      <div class="card">
+        <div class="card-title" id="selected-day-label">Hoy</div>
+        <div class="add-box">
+          <input type="text" id="new-task-input" placeholder="Añadir una tarea..." onkeypress="handleKey(event)">
+          <button onclick="addAgendaTask()">+</button>
+        </div>
+        <ul class="task-list" id="agenda-task-list"></ul>
+      </div>
+    </div>
+
+    <!-- VISTA BLOC -->
+    <div id="view-bloc" class="hidden">
+      <button class="btn-add-note" onclick="addNewNote()">+ Nueva Hoja en Blanco</button>
+      <div id="notes-container"></div>
+    </div>
+  </div>
+
+  <script>
+    let currentDate = new Date();
+    let selectedDate = new Date();
+    let agendaData = JSON.parse(localStorage.getItem('agenda_tasks_db')) || {};
+    let notesData = JSON.parse(localStorage.getItem('agenda_notes_db')) || [
+      { id: 1, title: 'Disfraz para Isabella', body: '- comprar tela\n- coser\n- ir al evento' },
+      { id: 2, title: 'Ejercicio', body: '- salir a correr el viernes\n- lavar zapatillas' }
+    ];
+
+    // Cargar Tema
+    const savedTheme = localStorage.getItem('agenda_theme') || 'theme-blue';
+    setTheme(savedTheme);
+
+    function setTheme(themeName) {
+      const body = document.getElementById('app-body');
+      body.className = themeName;
+      localStorage.setItem('agenda_theme', themeName);
+    }
+
+    function switchTab(tab) {
+      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById('view-agenda').classList.add('hidden');
+      document.getElementById('view-bloc').classList.add('hidden');
+
+      if(tab === 'agenda') {
+        document.getElementById('btn-agenda').classList.add('active');
+        document.getElementById('view-agenda').classList.remove('hidden');
+      } else {
+        document.getElementById('btn-bloc').classList.add('active');
+        document.getElementById('view-bloc').classList.remove('hidden');
+        renderNotes();
+      }
+    }
+
+    function formatDateKey(date) {
+      return date.toISOString().split('T')[0];
+    }
+
+    function renderWeek() {
+      const container = document.getElementById('week-days-container');
+      container.innerHTML = '';
+      
+      let curr = new Date(currentDate);
+      let dayIndex = curr.getDay() === 0 ? 6 : curr.getDay() - 1; 
+      let monday = new Date(curr.setDate(curr.getDate() - dayIndex));
+
+      const dayNames = ['lun', 'mar', 'mié', 'jue', 'vie', 'sáb', 'dom'];
+
+      for (let i = 0; i < 7; i++) {
+        let day = new Date(monday);
+        day.setDate(monday.getDate() + i);
+
+        const pill = document.createElement('div');
+        pill.className = 'day-pill' + (formatDateKey(day) === formatDateKey(selectedDate) ? ' active' : '');
+        pill.onclick = () => { selectedDate = day; renderWeek(); renderTasks(); };
+
+        pill.innerHTML = `
+          <div class="day-name">${dayNames[i]}</div>
+          <div class="day-num">${day.getDate()}</div>
+        `;
+        container.appendChild(pill);
+      }
+
+      const options = { month: 'long', year: 'numeric' };
+      document.getElementById('current-month-year').innerText = selectedDate.toLocaleDateString('es-ES', options);
+    }
+
+    function changeWeek(offset) {
+      currentDate.setDate(currentDate.getDate() + (offset * 7));
+      selectedDate = new Date(currentDate);
+      renderWeek();
+      renderTasks();
+    }
+
+    function renderTasks() {
+      const key = formatDateKey(selectedDate);
+      const list = document.getElementById('agenda-task-list');
+      list.innerHTML = '';
+
+      const dayOptions = { weekday: 'long', day: 'numeric', month: 'long' };
+      document.getElementById('selected-day-label').innerText = selectedDate.toLocaleDateString('es-ES', dayOptions);
+
+      const tasks = agendaData[key] || [];
+
+      tasks.forEach((task, index) => {
+        const li = document.createElement('li');
+        li.className = 'task-item';
+        li.innerHTML = `
+          <div class="task-left">
+            <input type="checkbox" class="task-checkbox" ${task.done ? 'checked' : ''} onchange="toggleTask(${index})">
+            <span class="task-text ${task.done ? 'done' : ''}">${task.text}</span>
+          </div>
+          <button class="btn-del" onclick="deleteTask(${index})">&times;</button>
+        `;
+        list.appendChild(li);
+      });
+    }
+
+    function addAgendaTask() {
+      const input = document.getElementById('new-task-input');
+      const text = input.value.trim();
+      if (!text) return;
+
+      const key = formatDateKey(selectedDate);
+      if (!agendaData[key]) agendaData[key] = [];
+
+      agendaData[key].push({ text, done: false });
+      localStorage.setItem('agenda_tasks_db', JSON.stringify(agendaData));
+      input.value = '';
+      renderTasks();
+    }
+
+    function handleKey(e) { if (e.key === 'Enter') addAgendaTask(); }
+
+    function toggleTask(index) {
+      const key = formatDateKey(selectedDate);
+      agendaData[key][index].done = !agendaData[key][index].done;
+      localStorage.setItem('agenda_tasks_db', JSON.stringify(agendaData));
+      renderTasks();
+    }
+
+    function deleteTask(index) {
+      const key = formatDateKey(selectedDate);
+      agendaData[key].splice(index, 1);
+      localStorage.setItem('agenda_tasks_db', JSON.stringify(agendaData));
+      renderTasks();
+    }
+
+    /* VISTA HOJAS EN BLANCO */
+    function renderNotes() {
+      const container = document.getElementById('notes-container');
+      container.innerHTML = '';
+
+      notesData.forEach(note => {
+        const card = document.createElement('div');
+        card.className = 'note-card';
+        card.innerHTML = `
+          <div class="note-header">
+            <input class="note-title" value="${note.title}" placeholder="Título..." onchange="updateNote(${note.id}, 'title', this.value)">
+            <button class="btn-del" onclick="deleteNote(${note.id})">&times;</button>
+          </div>
+          <textarea class="note-body" placeholder="Escribí tus ideas acá..." onchange="updateNote(${note.id}, 'body', this.value)">${note.body}</textarea>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function addNewNote() {
+      notesData.unshift({ id: Date.now(), title: '', body: '' });
+      localStorage.setItem('agenda_notes_db', JSON.stringify(notesData));
+      renderNotes();
+    }
+
+    function updateNote(id, field, value) {
+      const note = notesData.find(n => n.id === id);
+      if (note) {
+        note[field] = value;
+        localStorage.setItem('agenda_notes_db', JSON.stringify(notesData));
+      }
+    }
+
+    function deleteNote(id) {
+      notesData = notesData.filter(n => n.id !== id);
+      localStorage.setItem('agenda_notes_db', JSON.stringify(notesData));
+      renderNotes();
+    }
+
+    // Inicializar
+    renderWeek();
+    renderTasks();
+  </script>
+</body>
+</html>
