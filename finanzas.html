@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Navi - Finanzas</title>
+  <style>
+    :root {
+      --bg: #F8F9FA;
+      --card: #FFFFFF;
+      --text: #212529;
+      --muted: #6C757D;
+      --primary: #0284C7; /* Azul financiero sobrio */
+      --primary-light: #E0F2FE;
+      --income: #16A34A;  /* Verde para ingresos */
+      --expense: #DC2626; /* Rojo para gastos */
+      --border: #E5E7EB;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background-color: var(--bg); color: var(--text); padding-bottom: 40px; -webkit-tap-highlight-color: transparent; }
+
+    .header { background: var(--card); padding: 16px; text-align: center; border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 10; }
+    .header h1 { font-size: 1.2rem; font-weight: bold; color: var(--primary); }
+
+    .container { max-width: 500px; margin: 0 auto; padding: 16px; }
+
+    /* BARRA DE MESES */
+    .month-bar { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 10px; margin-bottom: 14px; }
+    .month-btn { padding: 8px 14px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; border: 1px solid var(--border); background: var(--card); color: var(--text); cursor: pointer; white-space: nowrap; }
+    .month-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+
+    /* SELECTOR DE QUINCENA */
+    .quincena-switcher { display: flex; background: var(--border); border-radius: 12px; padding: 3px; margin-bottom: 16px; }
+    .q-btn { flex: 1; padding: 10px; border: none; border-radius: 9px; font-size: 0.85rem; font-weight: bold; color: var(--muted); background: transparent; cursor: pointer; transition: all 0.2s; }
+    .q-btn.active { background: var(--card); color: var(--primary); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+
+    /* TARJETA DE INGRESO DE QUINCENA */
+    .income-card { background: var(--card); border-radius: 12px; padding: 14px; border: 1px solid var(--border); margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; }
+    .income-title { font-size: 0.9rem; font-weight: bold; color: var(--muted); }
+    .income-input-box { display: flex; align-items: center; gap: 4px; }
+    .income-input-box span { font-weight: bold; color: var(--income); }
+    .income-input-box input { width: 110px; padding: 8px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.95rem; font-weight: bold; color: var(--income); text-align: right; outline: none; }
+
+    /* FORMULARIO AGREGAR GASTO */
+    .add-card { background: var(--card); border-radius: 12px; padding: 14px; border: 1px solid var(--border); margin-bottom: 16px; }
+    .add-form { display: flex; flex-direction: column; gap: 8px; }
+    .input-group { display: flex; gap: 8px; }
+    .input-group input, .input-group select { padding: 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.9rem; outline: none; background: var(--card); color: var(--text); }
+    .input-desc { flex: 2; }
+    .input-amount { flex: 1; }
+    
+    .cat-select-wrapper { display: flex; gap: 6px; }
+    .cat-select-wrapper select { flex: 1; }
+    .btn-cat-action { padding: 8px 12px; border-radius: 8px; font-size: 0.8rem; font-weight: bold; border: 1px solid var(--border); background: var(--bg); color: var(--text); cursor: pointer; white-space: nowrap; }
+
+    .btn-submit { padding: 10px; background: var(--expense); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 0.95rem; }
+
+    /* LISTA DE GASTOS */
+    .card-title { font-size: 0.95rem; font-weight: bold; margin-bottom: 10px; color: var(--text); }
+    .expense-list { list-style: none; margin-bottom: 20px; }
+    .expense-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); }
+    .expense-item:last-child { border-bottom: none; }
+    .expense-info { display: flex; flex-direction: column; }
+    .expense-desc { font-size: 0.9rem; font-weight: 600; }
+    .expense-cat { font-size: 0.75rem; color: var(--muted); }
+    .expense-right { display: flex; align-items: center; gap: 10px; }
+    .expense-amount { font-size: 0.95rem; font-weight: bold; color: var(--expense); }
+    .btn-del { border: none; background: none; color: #EF4444; font-size: 1.1rem; cursor: pointer; padding: 2px 6px; }
+
+    /* RESUMEN MES (FOOTER) */
+    .summary-card { background: var(--card); border-radius: 14px; padding: 16px; border: 1px solid var(--border); box-shadow: 0 2px 6px rgba(0,0,0,0.06); }
+    .summary-row { display: flex; justify-content: space-between; font-size: 0.9rem; margin-bottom: 6px; }
+    .summary-row.total { font-size: 1rem; font-weight: bold; margin-top: 10px; padding-top: 10px; border-top: 2px dashed var(--border); }
+    .val-income { color: var(--income); font-weight: bold; }
+    .val-expense { color: var(--expense); font-weight: bold; }
+    .val-balance { font-weight: bold; }
+
+    .empty-msg { text-align: center; color: var(--muted); font-size: 0.85rem; padding: 15px 0; }
+
+    /* PANEL GESTIÓN CATEGORÍAS */
+    .cat-manager { display: none; background: var(--card); border-radius: 12px; padding: 14px; border: 1px solid var(--border); margin-bottom: 16px; }
+    .cat-manager.active { display: block; }
+    .cat-list-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 0.85rem; }
+  </style>
+</head>
+<body>
+
+  <header class="header">
+    <h1>📊 Navi Finanzas</h1>
+  </header>
+
+  <div class="container">
+    <!-- MESES -->
+    <div class="month-bar" id="month-bar"></div>
+
+    <!-- QUINCENAS -->
+    <div class="quincena-switcher">
+      <button class="q-btn active" id="btn-q1" onclick="setQuincena(1)">1ª Quincena (1-15)</button>
+      <button class="q-btn" id="btn-q2" onclick="setQuincena(2)">2ª Quincena (16-Fin)</button>
+    </div>
+
+    <!-- INGRESO DE LA QUINCENA -->
+    <div class="income-card">
+      <span class="income-title" id="income-label">Cobro 1ª Quincena:</span>
+      <div class="income-input-box">
+        <span>$</span>
+        <input type="number" id="income-input" placeholder="0" onchange="saveIncome()" onkeypress="handleIncomeKey(event)">
+      </div>
+    </div>
+
+    <!-- AGREGAR GASTO -->
+    <div class="add-card">
+      <div class="add-form">
+        <div class="input-group">
+          <input type="text" id="expense-desc" class="input-desc" placeholder="Gasto (ej: Luz, Tarjeta...)" onkeypress="handleKey(event)">
+          <input type="number" id="expense-amount" class="input-amount" placeholder="Monto $" onkeypress="handleKey(event)">
+        </div>
+        
+        <div class="cat-select-wrapper">
+          <select id="expense-cat"></select>
+          <button class="btn-cat-action" onclick="promptAddCategory()">+ Categoría</button>
+          <button class="btn-cat-action" onclick="toggleCatManager()">⚙️</button>
+        </div>
+
+        <button class="btn-submit" onclick="addExpense()">+ Registrar Gasto</button>
+      </div>
+    </div>
+
+    <!-- PANEL ADMIN CATEGORÍAS -->
+    <div class="cat-manager" id="cat-manager">
+      <div class="card-title" style="display:flex; justify-content:space-between; align-items:center;">
+        <span>Editar Categorías</span>
+        <button class="btn-del" onclick="toggleCatManager()">&times;</button>
+      </div>
+      <div id="cat-manage-list"></div>
+    </div>
+
+    <!-- LISTA DE GASTOS DE LA QUINCENA -->
+    <div style="background: var(--card); border-radius: 12px; padding: 14px; border: 1px solid var(--border); margin-bottom: 16px;">
+      <div class="card-title" id="expense-title">Gastos de esta quincena</div>
+      <ul class="expense-list" id="expense-list"></ul>
+    </div>
+
+    <!-- RESUMEN MENSUAL ACUMULADO -->
+    <div class="summary-card">
+      <div class="card-title" id="summary-title" style="margin-bottom: 12px; color: var(--primary);">Resumen Total del Mes</div>
+      <div class="summary-row">
+        <span>Ingresos Totales (Q1 + Q2):</span>
+        <span class="val-income" id="sum-income">$0</span>
+      </div>
+      <div class="summary-row">
+        <span>Gastos Totales (Q1 + Q2):</span>
+        <span class="val-expense" id="sum-expense">$0</span>
+      </div>
+      <div class="summary-row total">
+        <span>Balance Restante:</span>
+        <span class="val-balance" id="sum-balance">$0</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const months = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+    
+    let currentMonth = months[new Date().getMonth()];
+    let currentQuincena = 1;
+
+    // Categorías dinámicas
+    let categories = JSON.parse(localStorage.getItem('navi_finanzas_categories')) || [
+      '💡 Impuestos / Servicios',
+      '💳 Tarjeta de Crédito',
+      '🛒 Compras / Super',
+      '⛽ Combustible / Transporte',
+      '🏠 Casa / Arreglos',
+      '🩺 Salud / Farmacia',
+      '📌 Varios'
+    ];
+
+    let finanzasData = JSON.parse(localStorage.getItem('navi_finanzas_db')) || {};
+
+    function initMonthData(month) {
+      if (!finanzasData[month]) {
+        finanzasData[month] = {
+          incomeQ1: 0,
+          incomeQ2: 0,
+          expenses: []
+        };
+      }
+    }
+
+    function renderCategories() {
+      const select = document.getElementById('expense-cat');
+      select.innerHTML = '';
+      categories.forEach(cat => {
+        const opt = document.createElement('option');
+        opt.value = cat;
+        opt.innerText = cat;
+        select.appendChild(opt);
+      });
+
+      renderCatManagerList();
+    }
+
+    function promptAddCategory() {
+      const name = prompt('Nombre de la nueva categoría (ej: 🐶 Mascotas, 🎁 Regalos):');
+      if (name && name.trim()) {
+        const cleanName = name.trim();
+        if (!categories.includes(cleanName)) {
+          categories.push(cleanName);
+          localStorage.setItem('navi_finanzas_categories', JSON.stringify(categories));
+          renderCategories();
+          document.getElementById('expense-cat').value = cleanName;
+        }
+      }
+    }
+
+    function toggleCatManager() {
+      const mgr = document.getElementById('cat-manager');
+      mgr.classList.toggle('active');
+    }
+
+    function renderCatManagerList() {
+      const list = document.getElementById('cat-manage-list');
+      list.innerHTML = '';
+      categories.forEach((cat, index) => {
+        const div = document.createElement('div');
+        div.className = 'cat-list-item';
+        div.innerHTML = `
+          <span>${cat}</span>
+          <button class="btn-del" onclick="deleteCategory(${index})">&times;</button>
+        `;
+        list.appendChild(div);
+      });
+    }
+
+    function deleteCategory(index) {
+      if (categories.length <= 1) {
+        alert('Debes tener al menos una categoría.');
+        return;
+      }
+      categories.splice(index, 1);
+      localStorage.setItem('navi_finanzas_categories', JSON.stringify(categories));
+      renderCategories();
+    }
+
+    function renderMonthBar() {
+      const bar = document.getElementById('month-bar');
+      bar.innerHTML = '';
+
+      months.forEach(m => {
+        const btn = document.createElement('button');
+        btn.className = 'month-btn' + (m === currentMonth ? ' active' : '');
+        btn.innerText = m;
+        btn.onclick = () => { currentMonth = m; renderMonthBar(); renderView(); };
+        bar.appendChild(btn);
+      });
+    }
+
+    function setQuincena(q) {
+      currentQuincena = q;
+      document.getElementById('btn-q1').classList.toggle('active', q === 1);
+      document.getElementById('btn-q2').classList.toggle('active', q === 2);
+      renderView();
+    }
+
+    function renderView() {
+      initMonthData(currentMonth);
+      const mData = finanzasData[currentMonth];
+
+      document.getElementById('income-label').innerText = `Cobro ${currentQuincena}ª Quincena:`;
+      const incVal = currentQuincena === 1 ? mData.incomeQ1 : mData.incomeQ2;
+      document.getElementById('income-input').value = incVal ? incVal : '';
+
+      const qExpenses = mData.expenses.filter(e => e.quincena === currentQuincena);
+      const list = document.getElementById('expense-list');
+      list.innerHTML = '';
+
+      document.getElementById('expense-title').innerText = `Gastos de la ${currentQuincena}ª Quincena (${currentMonth})`;
+
+      if (qExpenses.length === 0) {
+        list.innerHTML = `<div class="empty-msg">No hay gastos registrados en esta quincena.</div>`;
+      } else {
+        qExpenses.forEach(exp => {
+          const li = document.createElement('li');
+          li.className = 'expense-item';
+          li.innerHTML = `
+            <div class="expense-info">
+              <span class="expense-desc">${exp.desc}</span>
+              <span class="expense-cat">${exp.cat}</span>
+            </div>
+            <div class="expense-right">
+              <span class="expense-amount">-$${formatNumber(exp.amount)}</span>
+              <button class="btn-del" onclick="deleteExpense(${exp.id})">&times;</button>
+            </div>
+          `;
+          list.appendChild(li);
+        });
+      }
+
+      renderSummary();
+    }
+
+    function saveIncome() {
+      initMonthData(currentMonth);
+      const val = parseFloat(document.getElementById('income-input').value) || 0;
+
+      if (currentQuincena === 1) {
+        finanzasData[currentMonth].incomeQ1 = val;
+      } else {
+        finanzasData[currentMonth].incomeQ2 = val;
+      }
+
+      localStorage.setItem('navi_finanzas_db', JSON.stringify(finanzasData));
+      renderSummary();
+    }
+
+    function addExpense() {
+      const descInput = document.getElementById('expense-desc');
+      const amountInput = document.getElementById('expense-amount');
+      const catSelect = document.getElementById('expense-cat');
+
+      const desc = descInput.value.trim();
+      const amount = parseFloat(amountInput.value);
+
+      if (!desc || isNaN(amount) || amount <= 0) return;
+
+      initMonthData(currentMonth);
+
+      const newExpense = {
+        id: Date.now(),
+        desc: desc,
+        amount: amount,
+        cat: catSelect.value,
+        quincena: currentQuincena
+      };
+
+      finanzasData[currentMonth].expenses.push(newExpense);
+      localStorage.setItem('navi_finanzas_db', JSON.stringify(finanzasData));
+
+      descInput.value = '';
+      amountInput.value = '';
+      renderView();
+    }
+
+    function deleteExpense(id) {
+      initMonthData(currentMonth);
+      finanzasData[currentMonth].expenses = finanzasData[currentMonth].expenses.filter(e => e.id !== id);
+      localStorage.setItem('navi_finanzas_db', JSON.stringify(finanzasData));
+      renderView();
+    }
+
+    function renderSummary() {
+      initMonthData(currentMonth);
+      const mData = finanzasData[currentMonth];
+
+      const totalIncome = (mData.incomeQ1 || 0) + (mData.incomeQ2 || 0);
+      const totalExpense = mData.expenses.reduce((acc, curr) => acc + curr.amount, 0);
+      const balance = totalIncome - totalExpense;
+
+      document.getElementById('summary-title').innerText = `Resumen Total de ${currentMonth}`;
+      document.getElementById('sum-income').innerText = `$${formatNumber(totalIncome)}`;
+      document.getElementById('sum-expense').innerText = `-$${formatNumber(totalExpense)}`;
+      
+      const balanceEl = document.getElementById('sum-balance');
+      balanceEl.innerText = `$${formatNumber(balance)}`;
+      balanceEl.style.color = balance >= 0 ? 'var(--income)' : 'var(--expense)';
+    }
+
+    function formatNumber(num) {
+      return num.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    }
+
+    function handleKey(e) { if (e.key === 'Enter') addExpense(); }
+    function handleIncomeKey(e) { if (e.key === 'Enter') { saveIncome(); e.target.blur(); } }
+
+    // Inicializar
+    renderCategories();
+    renderMonthBar();
+    renderView();
+  </script>
+</body>
+</html>
